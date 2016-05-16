@@ -15,7 +15,7 @@ import org.sarlacc.models._
 
 object Settings {
   lazy val cwd = new File(".").getCanonicalPath.toString
-  val PeriodMinutes = 2
+  val PeriodMinutes = 15
   val Aggregates = "aggregates"
   val Hours = "hours"
 }
@@ -62,11 +62,6 @@ case class ActiveAggregate(
 ) extends TimeSlice
 
 object Aggregator {
- 
-  def main(as: Array[String]): Unit = {
-    val agg = savedAggregates(LocalDateTime.of(2016,5,14, 0, 0, 0), LocalDateTime.now())
-    println(agg) 
-  }
 
   private val aggs = new File(Settings.Aggregates)
   private val hours = new File(Settings.Hours)

@@ -11,6 +11,7 @@ import org.sarlacc.aggregation._
 import org.sarlacc.aggregation.Settings._
 
 case class RollInterval(start: LocalDateTime, end: LocalDateTime){
+  assert((start isBefore end) && (!start.isEqual(end)))
   def in(ts: LocalDateTime): Boolean = {
     (start isBefore ts) && (end isAfter ts)
   }
