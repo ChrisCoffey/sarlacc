@@ -5,6 +5,7 @@ import java.time._
 import java.time.temporal.ChronoUnit
 import scala.collection.mutable.{Map => MMap, ArrayBuffer}
 import scala.io.Source
+import play.api.Logger
 
 import cats._
 import cats.std.all._
@@ -14,7 +15,7 @@ import org.sarlacc.models._
 
 object Settings {
   lazy val cwd = new File(".").getCanonicalPath.toString
-  val PeriodMinutes = 15
+  val PeriodMinutes = 2
   val Aggregates = "aggregates"
   val Hours = "hours"
 }
@@ -44,7 +45,7 @@ object SavedAggregate {
 
   def write(agg: SavedAggregate, hourly: Boolean) = {
     val n = if(hourly) hourlyFileName(agg.begin) else dailyFileName(agg.end)
-    val fw = new FileWriter( new File(n), true)
+    val fw = new FileWriter( new File(n) )
     val pw = new PrintWriter(fw) 
     agg.data.foreach{
       case(key, value) => pw.println(s"$key,$value")
@@ -57,7 +58,7 @@ case class ActiveAggregate(
   begin : LocalDateTime,
   end: LocalDateTime,
   data: MMap[Int, Int],
-  rolls: ArrayBuffer[Boolean] = ArrayBuffer.fill(4)(false) //ArrayBuffer(false, false, false, false)
+  rolls: ArrayBuffer[Boolean] = ArrayBuffer.fill(60)(false) 
 ) extends TimeSlice
 
 object Aggregator {
@@ -86,6 +87,7 @@ object Aggregator {
       .map (ts => SavedAggregate.hourlyFileName(ts) ) 
       .map {file => 
         val m = MMap.empty[Int, Int]
+        Logger.info(file)
         if(new File(file).exists)
           Source.fromFile(file, "UTF-8").getLines.foreach{l =>
             val Array(id, count) = l.split(",")
@@ -93,6 +95,7 @@ object Aggregator {
           }
         m
       }
+    Logger.info(s"${aggregates.length}")
     val rolledUp = Monoid[MMap[Int, Int]].combineAll(aggregates)
     SavedAggregate(start, end, rolledUp)
   }

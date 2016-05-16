@@ -9,7 +9,6 @@ import play.api.Logger
 
 import org.sarlacc.aggregation._
 import org.sarlacc.aggregation.Settings._
-import org.sarlacc.models._
 
 case class RollInterval(start: LocalDateTime, end: LocalDateTime){
   def in(ts: LocalDateTime): Boolean = {
@@ -23,7 +22,7 @@ object RollInterval {
   }
 
   def rollNextHour(start: LocalDateTime) = {
-    val rollIn = Duration.ofMinutes(60 - start.getMinute - 1)
+    val rollIn = Duration.ofMinutes(60 - start.getMinute - 1l)
     make(start, rollIn)
   }
 }
@@ -65,7 +64,6 @@ abstract class RingBuffer[A, B](size: Int, f: () => A){
     }
   }
 
-
 }
 
 trait IntervalManager {
@@ -89,7 +87,8 @@ object DataProcessor extends IntervalManager {
     }
   }
 
-  var interval = RollInterval.rollNextHour(LocalDateTime.now())
+  //var interval = RollInterval.rollNextHour(LocalDateTime.now())
+  var interval = RollInterval.make(LocalDateTime.now(), Duration.ofMinutes(2))
   private var leadingEdge = ActiveAggregate(interval.start, interval.end, MMap.empty[Int, Int])
   
   private lazy val processor = new Thread{
@@ -107,6 +106,7 @@ object DataProcessor extends IntervalManager {
               if(ts.getMinute % PeriodMinutes == 0 && !leadingEdge.rolls(block)) {
                 persist()
                 leadingEdge.rolls(block) = true
+                Logger.info(s"${interval.in(ts)}")
                 //check if we should roll the hour
                 if( !interval.in(ts) ) {
                   persistHourly()
