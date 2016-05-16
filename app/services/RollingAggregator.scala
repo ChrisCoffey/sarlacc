@@ -44,7 +44,11 @@ abstract class RingBuffer[A, B](size: Int, f: () => A){
 
   //This should be a function implemented 
   def offer(data: B): Unit = {
-    //This flow could be cleaner using 
+    if(ctr.get() == size){
+      //This is to guard against overwriting data if the reader falls behind.
+      //Should only occur with an unexpectedly high workload
+      buffer.synchronized{ buffer.wait() } 
+    }
     val i = write.getAndUpdate(reset)
     buffer(i) = buffer(i)
     buffer(i) = doOffer(buffer(i), data)
@@ -59,7 +63,9 @@ abstract class RingBuffer[A, B](size: Int, f: () => A){
       None
     else {
       val i = read.getAndUpdate(reset)
-      ctr.decrementAndGet()
+      if(ctr.decrementAndGet() == (size - 1)){
+        buffer.synchronized{ buffer.notifyAll() } 
+      }
       Some(buffer(i))
     }
   }

@@ -62,7 +62,12 @@ case class ActiveAggregate(
 ) extends TimeSlice
 
 object Aggregator {
-  
+ 
+  def main(as: Array[String]): Unit = {
+    val agg = savedAggregates(LocalDateTime.of(2016,5,14, 0, 0, 0), LocalDateTime.now())
+    println(agg) 
+  }
+
   private val aggs = new File(Settings.Aggregates)
   private val hours = new File(Settings.Hours)
   if(!aggs.exists)
@@ -71,15 +76,11 @@ object Aggregator {
     hours.mkdir
 
   type M= MMap[Int, Int]
-  private implicit val ev = new Monoid[M] {
-    def empty = MMap.empty[Int, Int]
-    def combine(l: M, r: M): M = {
+  private def merge(l: M, r: M): M = 
       l.foldLeft(r){
-        case (acc, kvp@(key, value)) =>
-          acc.get(key).fold[M](acc + kvp)(orig => acc + (key->(orig + value)))
-      } 
-    }
-  }
+        case (acc, (key, value)) =>
+          acc.get(key).fold[M]{acc(key) = value; acc }{orig => acc(key) = (orig + value); acc }
+      }
 
   private def savedAggregates(start: LocalDateTime, end: LocalDateTime): SavedAggregate = {
     val aggregates = (0l until start.until(end, ChronoUnit.HOURS))
@@ -96,13 +97,13 @@ object Aggregator {
         m
       }
     Logger.info(s"${aggregates.length}")
-    val rolledUp = Monoid[MMap[Int, Int]].combineAll(aggregates)
+    val rolledUp = aggregates.reduce(merge)
     SavedAggregate(start, end, rolledUp)
   }
 
   def aggregate(s: LocalDateTime, e: LocalDateTime, current: ActiveAggregate): TimeSlice = {
     val saved = savedAggregates(s, e) 
-    val totalAgg = Monoid[MMap[Int, Int]].combineAll(List(saved.data, current.data))
+    val totalAgg = merge(saved.data, current.data)
     new TimeSlice{
       val begin = s
       val end = current.end
