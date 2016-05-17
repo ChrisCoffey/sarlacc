@@ -94,8 +94,7 @@ object DataProcessor extends IntervalManager {
     }
   }
 
-  //var interval = RollInterval.rollNextHour(LocalDateTime.now())
-  var interval = RollInterval.make(LocalDateTime.now(), Duration.ofMinutes(2))
+  var interval = RollInterval.rollNextHour(LocalDateTime.now())
   private var leadingEdge = ActiveAggregate(interval.start, interval.end, MMap.empty[Int, Int])
   
   private lazy val processor = new Thread{
